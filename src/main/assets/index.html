@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+  html,body{margin:0;padding:0;background:transparent;color:#dbe4ec;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
+    -webkit-user-select:none;user-select:none;}
+  .hdr{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#0f1720;
+    border-bottom:1px solid #1e2b36;touch-action:none;cursor:grab;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex:none;}
+  .ttl{font-weight:700;letter-spacing:.06em;}
+  .ver{color:#5d6b78;font-size:10px;}
+  .stat{font-size:10px;color:#22c55e;letter-spacing:.05em;margin-left:auto;}
+  .x{font-size:12px;color:#5d6b78;padding:0 4px;}
+  .body{padding:12px;}
+  .dial{display:flex;gap:14px;align-items:center;padding:2px 2px 14px;
+    border-bottom:1px solid #17222c;}
+  .big{font-size:30px;font-weight:700;color:#22c55e;line-height:1;text-align:center;min-width:86px;}
+  .cap{font-size:9px;color:#5d6b78;letter-spacing:.12em;margin-top:3px;text-align:center;}
+  .lab{display:flex;justify-content:space-between;font-size:10px;color:#7d8b99;margin:0 0 4px;}
+  input[type=range]{width:100%;accent-color:#22c55e;margin:0 0 9px;}
+  .grp{font-size:9px;color:#4d5a66;letter-spacing:.16em;margin:12px 0 6px;}
+  .row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #121b23;}
+  .rt{flex:1;min-width:0;}
+  .rn{font-size:11px;}
+  .rd{font-size:9px;color:#4d5a66;margin-top:2px;}
+  .sw{width:38px;height:20px;border-radius:20px;flex:none;position:relative;}
+  .kn{position:absolute;top:2px;width:16px;height:16px;border-radius:50%;}
+  .btns{display:flex;gap:8px;margin-top:14px;}
+  button{font-family:inherit;font-size:12px;padding:10px;border-radius:9px;cursor:pointer;}
+  .apply{flex:1;font-weight:700;letter-spacing:.08em;border:1px solid #22c55e;
+    background:#22c55e;color:#06120a;}
+  .turbo{font-weight:700;letter-spacing:.08em;border:1px solid #f59e0b;
+    background:transparent;color:#f59e0b;padding:10px 14px;}
+  .rst{border:1px solid #26333f;background:transparent;color:#7d8b99;padding:10px 12px;}
+  .log{margin-top:12px;background:#080d11;border:1px solid #17222c;border-radius:9px;
+    padding:9px;height:86px;overflow:hidden;font-size:10px;line-height:1.65;color:#6f8090;}
+  .foot{display:flex;justify-content:space-between;margin-top:10px;font-size:9px;color:#4d5a66;}
+</style>
+</head>
+<body>
+
+<div class="hdr" id="hdr">
+  <span class="dot" id="dot"></span>
+  <span class="ttl">FF PANEL</span>
+  <span class="ver">OB56</span>
+  <span class="stat" id="stat">ACTIVE</span>
+  <span class="x" id="x">x</span>
+</div>
+
+<div class="body" id="body">
+  <div class="dial">
+    <div><div class="big" id="big">75</div><div class="cap">HEADSHOT</div></div>
+    <div style="flex:1">
+      <div class="lab"><span>headshot bias</span><span id="bv">75</span></div>
+      <input id="bias" type="range" min="50" max="100" value="75">
+      <div class="lab"><span>drag speed</span><span id="dv">7</span></div>
+      <input id="drag" type="range" min="1" max="10" value="7">
+    </div>
+  </div>
+
+  <div id="rows"></div>
+
+  <div class="btns">
+    <button class="apply" id="apply">APPLY</button>
+    <button class="turbo" id="turbo">TURBO</button>
+    <button class="rst" id="rst">RST</button>
+  </div>
+
+  <div class="log" id="log"></div>
+  <div class="foot"><span id="cfg">GEN - RD - 2X - 4X - AWM</span><span id="cp">copy</span></div>
+</div>
+
+<script>
+var ROWS=[
+ {k:"hs",g:"AIM",n:"headshot only",d:"locks to the 75% head profile",on:true},
+ {k:"auto",g:"AIM",n:"auto tap on head",d:"fires as crosshair crosses head height",on:true},
+ {k:"drag",g:"AIM",n:"fast drag",d:"shortens the drag path",on:true},
+ {k:"fps",g:"SPEED",n:"fps unlock",d:"lifts the frame cap where supported",on:false},
+ {k:"lag",g:"SPEED",n:"lag cut",d:"trims touch sampling delay",on:false},
+ {k:"rl",g:"SPEED",n:"fast reload anim",d:"skips the dead tail of the reload",on:true}
+];
+var S={bias:75,drag:7,t:{}};
+ROWS.forEach(function(r){S.t[r.k]=r.on;});
+try{var d=JSON.parse(localStorage.getItem("ffp")||"null");if(d&&d.t)S=d;}catch(e){}
+
+function save(){try{localStorage.setItem("ffp",JSON.stringify(S));}catch(e){}}
+function log(m,c){var l=document.getElementById("log"),n=document.createElement("div");
+ var t=new Date(),p=function(x){return x<10?"0"+x:""+x;};
+ n.innerHTML='<span style="color:#33424f">'+p(t.getHours())+":"+p(t.getMinutes())+":"+p(t.getSeconds())+'</span> <span style="color:'+(c||"#6f8090")+'">'+m+'</span>';
+ l.appendChild(n);while(l.children.length>6)l.removeChild(l.firstChild);}
+
+function rows(){var w=document.getElementById("rows");w.innerHTML="";var lg=null;
+ ROWS.forEach(function(r){
+  if(r.g!==lg){lg=r.g;var h=document.createElement("div");h.className="grp";h.textContent=r.g;w.appendChild(h);}
+  var row=document.createElement("div");row.className="row";
+  var t=document.createElement("div");t.className="rt";
+  t.innerHTML='<div class="rn" style="color:'+(S.t[r.k]?"#dbe4ec":"#66757f")+'">'+r.n+'</div><div class="rd">'+r.d+'</div>';
+  var sw=document.createElement("div");sw.className="sw";
+  sw.style.background=S.t[r.k]?"#22c55e":"#1e2b36";
+  var kn=document.createElement("span");kn.className="kn";
+  kn.style.left=S.t[r.k]?"20px":"2px";
+  kn.style.background=S.t[r.k]?"#06120a":"#5d6b78";
+  sw.appendChild(kn);
+  sw.onclick=function(){S.t[r.k]=!S.t[r.k];save();rows();log((S.t[r.k]?"+ ":"- ")+r.n,S.t[r.k]?"#22c55e":"#7d8b99");};
+  row.appendChild(t);row.appendChild(sw);w.appendChild(row);
+ });}
+
+function vals(){var b=S.bias;return [Math.round(120+b*0.6),Math.round(126+b*0.6),
+ Math.round(108+b*0.55),Math.round(92+b*0.5),Math.round(58+b*0.45)];}
+function paint(){document.getElementById("big").textContent=S.bias;
+ document.getElementById("bv").textContent=S.bias;
+ document.getElementById("dv").textContent=S.drag;
+ var v=vals();
+ document.getElementById("cfg").textContent="GEN "+v[0]+" | RD "+v[1]+" | 2X "+v[2]+" | 4X "+v[3]+" | AWM "+v[4];}
+
+document.getElementById("bias").oninput=function(){S.bias=+this.value;save();paint();};
+document.getElementById("drag").oninput=function(){S.drag=+this.value;save();paint();};
+document.getElementById("apply").onclick=function(){paint();log("applied · injected","#22c55e");log("bias "+S.bias+"% · drag "+S.drag+"/10");};
+document.getElementById("turbo").onclick=function(){ROWS.forEach(function(r){S.t[r.k]=true;});
+ S.bias=75;S.drag=10;save();rows();paint();
+ document.getElementById("bias").value=75;document.getElementById("drag").value=10;
+ log("TURBO · all modules maxed","#f59e0b");};
+document.getElementById("rst").onclick=function(){ROWS.forEach(function(r){S.t[r.k]=r.on;});
+ S.bias=75;S.drag=7;save();rows();paint();
+ document.getElementById("bias").value=75;document.getElementById("drag").value=7;
+ log("reset to stock","#7d8b99");};
+document.getElementById("cp").onclick=function(){
+ var t="OB56 panel macro | headshot only "+S.bias+"% | drag "+S.drag+"/10 | "+vals().join(" | ")+" (0-200)";
+ var ta=document.createElement("textarea");ta.value=t;ta.style.cssText="position:absolute;left:-9999px";
+ document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}
+ document.body.removeChild(ta);log("macro copied","#22c55e");};
+
+var lx=0,ly=0,dragging=false,tx=0,ty=0;
+var hdr=document.getElementById("hdr");
+hdr.addEventListener("touchstart",function(e){dragging=true;lx=e.touches[0].screenX;ly=e.touches[0].screenY;},{passive:true});
+hdr.addEventListener("touchmove",function(e){
+ if(!dragging)return;
+ var x=e.touches[0].screenX,y=e.touches[0].screenY;
+ var dx=Math.round(x-lx),dy=Math.round(y-ly);
+ lx=x;ly=y;
+ if(window.Android&&Android.drag){Android.drag(dx,dy);}
+ else{tx+=dx;ty+=dy;document.getElementById("hdr").parentNode.style.transform="translate("+tx+"px,"+ty+"px)";}
+ e.preventDefault();},{passive:false});
+hdr.addEventListener("touchend",function(){dragging=false;});
+document.getElementById("x").onclick=function(){
+ if(window.Android&&Android.close){Android.close();}
+ else{document.getElementById("hdr").style.display="none";document.getElementById("body").style.display="none";}
+};
+
+rows();paint();log("panel loaded · ob56 build","#22c55e");log("head profile "+S.bias+"%");
+</script>
+</body>
+                                       </html>
